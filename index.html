@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quiz Me On This — AI Study Quiz Generator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Kalam:wght@400;700&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: #F7F3EA;
+    background-image: repeating-linear-gradient(#F7F3EA 0px, #F7F3EA 31px, #AFC8DD 32px);
+    background-position: 0 8px;
+    font-family: 'Source Serif 4', serif;
+    color: #1D2B4F;
+  }
+  .font-hand { font-family: 'Kalam', cursive; }
+  .font-mono { font-family: 'JetBrains Mono', monospace; }
+
+  .wrap { position: relative; max-width: 700px; margin: 0 auto; padding: 40px 24px 40px 72px; }
+  .margin-line { position: absolute; top: 0; bottom: 0; left: 44px; width: 1px; background: #C1666B; }
+
+  h1 { font-size: 2.4rem; margin: 0; }
+  .subtitle { font-size: 0.9rem; color: #5A5240; margin-top: 4px; }
+
+  textarea {
+    width: 100%; font-family: 'Source Serif 4', serif; font-size: 1rem;
+    background: transparent; border: none; outline: none; resize: none;
+    line-height: 32px; color: #1D2B4F;
+  }
+  textarea::placeholder { font-style: italic; }
+
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
+  select, input[type="password"] {
+    font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
+    padding: 8px 10px; border-radius: 6px; border: 1px solid #AFC8DD;
+    background: #fff; color: #1D2B4F;
+  }
+  button {
+    font-family: 'Kalam', cursive; font-size: 1.1rem; cursor: pointer;
+    padding: 8px 20px; border-radius: 8px; border: none;
+    background: #F2C14E; color: #1D2B4F; box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+  button:disabled { opacity: 0.5; cursor: default; }
+  .btn-link { background: none; box-shadow: none; font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem; text-decoration: underline; color: #5A5240; padding: 0; }
+
+  .error { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #C1666B; margin-top: 8px; }
+
+  .card {
+    background: #fff; border-radius: 8px; padding: 20px; margin-top: 20px;
+    border: 1px solid #E7DFC9; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card:nth-child(odd) { transform: rotate(-0.4deg); }
+  .card:nth-child(even) { transform: rotate(0.4deg); }
+  .qlabel { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #C1666B; margin: 0 0 8px; }
+  .qtext { font-size: 1rem; margin: 0 0 12px; }
+  .opt {
+    display: block; width: 100%; text-align: left; font-family: 'Source Serif 4', serif;
+    font-size: 0.95rem; padding: 8px 12px; margin-bottom: 8px; border-radius: 6px;
+    border: 1px solid #E7DFC9; background: transparent; color: #1D2B4F; cursor: pointer;
+  }
+  .opt.correct { border-color: #7FA37F; background: #EEF6EE; }
+  .opt.wrong { border-color: #C1666B; background: #FBEEEE; }
+  .explanation { font-size: 0.9rem; font-style: italic; color: #5A5240; margin-top: 6px; }
+
+  .history-box { background: #fff; border-radius: 8px; padding: 20px; border: 1px solid #E7DFC9; margin-bottom: 20px; }
+  .history-row { display: flex; justify-content: space-between; font-size: 0.9rem; border-bottom: 1px solid #F0EBDA; padding-bottom: 4px; margin-bottom: 6px; }
+  .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+  .key-note { font-size: 0.72rem; color: #5A5240; margin-top: 4px; max-width: 500px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="margin-line"></div>
+
+  <div class="header-row">
+    <div>
+      <h1 class="font-hand">Quiz me on this</h1>
+      <p class="subtitle">Paste your notes, pick a subject, and get practice questions with explanations.</p>
+    </div>
+    <button class="btn-link" id="historyToggle">History (0)</button>
+  </div>
+
+  <div class="history-box" id="historyBox" style="display:none;">
+    <div class="header-row" style="margin-bottom:10px;">
+      <p class="font-hand" style="font-size:1.4rem; margin:0;">Past sessions</p>
+      <button class="btn-link" id="clearHistory">Clear</button>
+    </div>
+    <div id="historyList"></div>
+    <div id="weakSpots"></div>
+  </div>
+
+  <div style="margin-top: 20px;">
+    <input type="password" id="apiKey" placeholder="Paste your Anthropic API key (kept only in this browser tab)" style="width:100%; margin-bottom:10px;" />
+    <p class="key-note">Get a key at console.anthropic.com. It's stored only in this browser session (sessionStorage), never sent anywhere except Anthropic's API, and clears when you close the tab.</p>
+
+    <textarea id="notes" rows="6" placeholder="Paste study notes or just a topic, e.g. 'cellular respiration' or 'the Krebs cycle'..."></textarea>
+
+    <div class="controls">
+      <select id="subject">
+        <option>Biology</option><option>Chemistry</option><option>English</option><option>Math</option><option>Other</option>
+      </select>
+      <select id="difficulty">
+        <option>Easy</option><option selected>Medium</option><option>Hard</option>
+      </select>
+      <select id="count">
+        <option value="3">3 questions</option><option value="5" selected>5 questions</option><option value="8">8 questions</option>
+      </select>
+      <button id="generateBtn" style="margin-left:auto;">Generate quiz →</button>
+    </div>
+    <p class="error" id="errorMsg"></p>
+  </div>
+
+  <div id="questionsBox" style="margin-top: 20px;"></div>
+</div>
+
+<script>
+const HISTORY_KEY = "quiz-history";
+let questions = [];
+let answers = {};
+let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
+
+const el = (id) => document.getElementById(id);
+
+function renderHistory() {
+  el("historyToggle").textContent = `History (${history.length})`;
+  const list = el("historyList");
+  const weak = el("weakSpots");
+  if (history.length === 0) {
+    list.innerHTML = '<p style="font-style:italic; color:#5A5240; font-size:0.9rem;">No sessions saved yet. Finish a quiz to start tracking your progress.</p>';
+    weak.innerHTML = "";
+    return;
+  }
+  list.innerHTML = history.map(s =>
+    `<div class="history-row"><span>${s.subject} · ${s.difficulty}</span><span class="font-mono">${s.correct}/${s.total} · ${new Date(s.date).toLocaleDateString()}</span></div>`
+  ).join("");
+
+  const seen = new Set();
+  const weakSpots = [];
+  history.forEach(s => (s.missed || []).forEach(m => { if (!seen.has(m)) { seen.add(m); weakSpots.push(m); } }));
+  if (weakSpots.length > 0) {
+    weak.innerHTML = '<p class="font-hand" style="font-size:1.2rem; margin:10px 0 6px;">Questions you\'ve missed</p><ul style="font-size:0.9rem; color:#5A5240; padding-left:20px;">' +
+      weakSpots.slice(0, 8).map(m => `<li>${m}</li>`).join("") + '</ul>';
+  } else {
+    weak.innerHTML = "";
+  }
+}
+
+el("historyToggle").onclick = () => {
+  const box = el("historyBox");
+  box.style.display = box.style.display === "none" ? "block" : "none";
+};
+el("clearHistory").onclick = () => {
+  history = [];
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistory();
+};
+
+function saveSession(session) {
+  history = [session, ...history].slice(0, 30);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  renderHistory();
+}
+
+async function generateQuiz() {
+  const notes = el("notes").value.trim();
+  const apiKey = el("apiKey").value.trim();
+  const subject = el("subject").value;
+  const difficulty = el("difficulty").value;
+  const count = el("count").value;
+  const errorMsg = el("errorMsg");
+  errorMsg.textContent = "";
+
+  if (!notes) { errorMsg.textContent = "Paste some notes or a topic first."; return; }
+  if (!apiKey) { errorMsg.textContent = "Paste your Anthropic API key above first."; return; }
+
+  sessionStorage.setItem("anthropic_key", apiKey);
+
+  const btn = el("generateBtn");
+  btn.disabled = true;
+  btn.textContent = "Writing questions...";
+  questions = []; answers = {};
+  el("questionsBox").innerHTML = "";
+
+  const prompt = `You are creating a study quiz for a high-school/early-college tutee.
+Subject: ${subject}
+Difficulty: ${difficulty}
+Notes or topic:
+"""
+${notes}
+"""
+
+Write exactly ${count} multiple-choice questions based on this material.
+Return ONLY valid JSON, no markdown fences, no preamble, matching this shape:
+{"questions":[{"question":"...","options":["A text","B text","C text","D text"],"correctIndex":0,"explanation":"1-2 sentence explanation of why the answer is correct"}]}`;
+
+  try {
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1500,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
+    const data = await response.json();
+    if (data.error) throw new Error(data.error.message || "API error");
+    const text = data.content.map(b => b.type === "text" ? b.text : "").join("").trim();
+    const clean = text.replace(/```json|```/g, "").trim();
+    const parsed = JSON.parse(clean);
+    questions = parsed.questions || [];
+    renderQuestions(subject, difficulty);
+  } catch (e) {
+    errorMsg.textContent = "Couldn't generate a quiz. Check your API key, or try shorter notes. (" + e.message + ")";
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Generate quiz →";
+  }
+}
+
+function renderQuestions(subject, difficulty) {
+  const box = el("questionsBox");
+  box.innerHTML = "";
+  questions.forEach((q, i) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.innerHTML = `
+      <p class="qlabel">Q${i + 1}</p>
+      <p class="qtext">${q.question}</p>
+      <div class="opts" id="opts-${i}"></div>
+      <p class="explanation" id="exp-${i}" style="display:none;"></p>
+    `;
+    box.appendChild(card);
+    const optsDiv = card.querySelector(`#opts-${i}`);
+    q.options.forEach((opt, oi) => {
+      const b = document.createElement("button");
+      b.className = "opt";
+      b.textContent = String.fromCharCode(65 + oi) + ". " + opt;
+      b.onclick = () => selectAnswer(i, oi, subject, difficulty);
+      optsDiv.appendChild(b);
+    });
+  });
+}
+
+function selectAnswer(qIndex, optIndex, subject, difficulty) {
+  if (answers[qIndex] !== undefined) return;
+  answers[qIndex] = optIndex;
+  const q = questions[qIndex];
+  const optsDiv = el(`opts-${qIndex}`);
+  [...optsDiv.children].forEach((btn, oi) => {
+    if (oi === q.correctIndex) btn.classList.add("correct");
+    else if (oi === optIndex) btn.classList.add("wrong");
+  });
+  el(`exp-${qIndex}`).textContent = q.explanation;
+  el(`exp-${qIndex}`).style.display = "block";
+
+  if (Object.keys(answers).length === questions.length) {
+    const missed = questions
+      .map((q, i) => ({ q, chosen: answers[i] }))
+      .filter(x => x.chosen !== x.q.correctIndex)
+      .map(x => x.q.question);
+    saveSession({
+      date: new Date().toISOString(),
+      subject, difficulty,
+      total: questions.length,
+      correct: questions.length - missed.length,
+      missed
+    });
+  }
+}
+
+el("generateBtn").onclick = generateQuiz;
+const savedKey = sessionStorage.getItem("anthropic_key");
+if (savedKey) el("apiKey").value = savedKey;
+renderHistory();
+</script>
+</body>
+</html>
