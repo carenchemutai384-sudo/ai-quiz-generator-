@@ -2,7 +2,7 @@
 
 A lightweight web app that turns any set of study notes or a topic into a multiple-choice practice quiz with explanations, built to support peer tutoring.
 
-**Live demo:** _add your GitHub Pages link here after publishing_
+**Live demo:**https://carenchemutai384-sudo.github.io/ai-quiz-generator-/
 
 ## Why I built this
 
