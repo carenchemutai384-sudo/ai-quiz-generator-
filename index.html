@@ -209,8 +209,9 @@ Return ONLY valid JSON, no markdown fences, no preamble, matching this shape:
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 2500,
-            responseMimeType: "application/json"
+            maxOutputTokens: 4000,
+            responseMimeType: "application/json",
+            thinkingConfig: { thinkingBudget: 0 }
           }
         })
       }
