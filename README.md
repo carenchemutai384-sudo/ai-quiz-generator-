@@ -34,6 +34,43 @@ A clear pattern emerged: the AI's flawed distractors were almost always technica
 3. Get a free API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) — no credit card required
 4. Paste your key into the app and start generating quizzes
 
+## Screenshots
+
+**Q1 — Electrolysis of acidified water**
+
+
+![Question testing gas volume ratios produced at the cathode and anode](Screenshot_2026-07-14-16-26-47-87_3aea4af51f236e4932235fdada7d1643.jpg)
+
+
+
+**Q2 — Electrolysis of molten lead(II) bromide**
+
+
+![Question testing electrode products when molten PbBr2 is electrolyzed](Screenshot_2026-07-14-16-27-23-85_3aea4af51f236e4932235fdada7d1643.jpg)
+
+
+
+**Q3 — Electrolysis of concentrated brine**
+
+
+![Question testing primary products at each electrode during brine electrolysis](Screenshot_2026-07-14-16-27-46-71_3aea4af51f236e4932235fdada7d1643.jpg)
+
+
+
+**Q4 — Reactive vs inert electrodes**
+
+
+![Question testing anode behavior when reactive copper electrodes are used instead of inert carbon](Screenshot_2026-07-14-16-28-00-06_3aea4af51f236e4932235fdada7d1643.jpg)
+
+
+
+**Q5 — Effect of electrolyte concentration**
+
+
+![Question testing why oxygen rather than chlorine is discharged in dilute sodium chloride electrolysis](Screenshot_2026-07-14-16-28-13-30_3aea4af51f236e4932235fdada7d1643.jpg)
+
+
+
 ## What's next
 
 - Support for short-answer questions, not just multiple choice
