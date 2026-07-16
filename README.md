@@ -4,7 +4,7 @@ A lightweight web app that turns any set of study notes or a topic into a practi
 
 **Live demo:** https://carenchemutai384-sudo.github.io/ai-quiz-generator-/
 
-**Current version:** v2.0 — see [CHANGELOG.md](./CHANGELOG.md) for version history
+**Current version:** v3.0 — see [CHANGELOG.md](./CHANGELOG.md) for version history
 
 ## Why I built this
 
@@ -18,7 +18,7 @@ I've spent four years as a peer tutor in Biology, Chemistry, and English. This p
 - Stats dashboard: total quizzes completed, average score, strongest subject, weakest subject
 - Export any completed quiz's results as a downloadable `.txt` file
 - Persistent "history" of past quiz sessions (saved locally in your browser)
-- A running "questions you've missed" list, aggregated across sessions, to surface weak spots
+- Per-subject weak-spot tracking: a miss-rate percentage and bar for each subject you've quizzed on, with the specific missed questions listed underneath, sorted worst-subject first
 
 ## What I learned testing it
 
@@ -41,5 +41,5 @@ A clear pattern emerged: the AI's flawed distractors were almost always technica
 
 ## What's next
 
-- Per-topic weak-spot tracking rather than a flat missed-questions list
+- Spaced repetition: automatically resurface previously-missed questions in later quizzes instead of just listing them
 - Testing with real students beyond myself, to validate whether the "weak spots" feature actually changes study behavior
