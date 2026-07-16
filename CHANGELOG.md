@@ -1,5 +1,10 @@
 # Changelog
 
+## v3.1
+- Switched the quiz-generation backend from the Anthropic API to Google's Gemini API (gemini-2.5-flash)
+- Chosen for its generous free tier, removing a payment barrier for anyone testing or using the tool without a paid API plan
+- Users now paste a free Gemini key (from Google AI Studio) instead of an Anthropic key; everything else about the app is unchanged
+
 ## v3.0
 - Replaced the flat "questions you've missed" list with per-subject weak-spot tracking
 - Each subject now shows a miss-rate percentage and a visual bar, sorted worst-subject first
