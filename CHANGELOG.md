@@ -1,5 +1,11 @@
 # Changelog
 
+## v3.0
+- Replaced the flat "questions you've missed" list with per-subject weak-spot tracking
+- Each subject now shows a miss-rate percentage and a visual bar, sorted worst-subject first
+- The top missed questions for each subject are listed underneath its bar
+- This makes it possible to see, at a glance, which subject needs the most review — not just a single undifferentiated list
+
 ## v2.0
 - Added a results page shown after finishing a quiz: score, percentage, and a short performance message
 - Added a stats dashboard: total quizzes completed, average score, strongest subject, weakest subject
