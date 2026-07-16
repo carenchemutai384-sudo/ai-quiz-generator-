@@ -4,7 +4,7 @@ A lightweight web app that turns any set of study notes or a topic into a practi
 
 **Live demo:** https://carenchemutai384-sudo.github.io/ai-quiz-generator-/
 
-**Current version:** v3.0 — see [CHANGELOG.md](./CHANGELOG.md) for version history
+**Current version:** v3.1 — see [CHANGELOG.md](./CHANGELOG.md) for version history
 
 ## Why I built this
 
@@ -29,14 +29,14 @@ A clear pattern emerged: the AI's flawed distractors were almost always technica
 ## Tech
 
 - Vanilla HTML/CSS/JavaScript — no build step, no framework dependencies
-- Calls the Anthropic API directly from the browser (user supplies their own API key, stored only in that browser session)
+- Calls the Google Gemini API (gemini-2.5-flash) directly from the browser (user supplies their own free-tier API key, stored only in that browser session)
 - Uses `localStorage` for persistent quiz history
 
 ## Running it yourself
 
 1. Clone this repo or download `index.html`
 2. Open it in any browser, or host it via GitHub Pages
-3. Get a free/paid API key at [console.anthropic.com](https://console.anthropic.com)
+3. Get a free API key at [aistudio.google.com/app/apikey](https://aistudio.google.com/app/apikey)
 4. Paste your key into the app and start generating quizzes
 
 ## What's next
