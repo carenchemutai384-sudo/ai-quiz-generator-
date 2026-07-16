@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+<!-- VERSION 2.0 — added: score/results page, quiz stats tracking, export to text file, true/false + short-answer question types -->
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -33,7 +34,7 @@
   textarea::placeholder { font-style: italic; }
 
   .controls { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; }
-  select, input[type="password"] {
+  select, input[type="password"], input[type="text"] {
     font-family: 'JetBrains Mono', monospace; font-size: 0.75rem;
     padding: 8px 10px; border-radius: 6px; border: 1px solid #AFC8DD;
     background: #fff; color: #1D2B4F;
@@ -46,6 +47,7 @@
   button:disabled { opacity: 0.5; cursor: default; }
   .btn-link { background: none; box-shadow: none; font-family: 'JetBrains Mono', monospace;
     font-size: 0.75rem; text-decoration: underline; color: #5A5240; padding: 0; }
+  .btn-secondary { background: #fff; border: 1px solid #AFC8DD; font-size: 0.95rem; }
 
   .error { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #C1666B; margin-top: 8px; }
 
@@ -56,6 +58,7 @@
   .card:nth-child(odd) { transform: rotate(-0.4deg); }
   .card:nth-child(even) { transform: rotate(0.4deg); }
   .qlabel { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #C1666B; margin: 0 0 8px; }
+  .qtype { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #7A8FA6; margin: 0 0 8px; text-transform: uppercase; letter-spacing: 0.05em; }
   .qtext { font-size: 1rem; margin: 0 0 12px; }
   .opt {
     display: block; width: 100%; text-align: left; font-family: 'Source Serif 4', serif;
@@ -70,6 +73,18 @@
   .history-row { display: flex; justify-content: space-between; font-size: 0.9rem; border-bottom: 1px solid #F0EBDA; padding-bottom: 4px; margin-bottom: 6px; }
   .header-row { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
   .key-note { font-size: 0.72rem; color: #5A5240; margin-top: 4px; max-width: 500px; }
+
+  .stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .stat-box { background: #FBF8F0; border-radius: 6px; padding: 10px 12px; border: 1px solid #F0EBDA; }
+  .stat-label { font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; color: #5A5240; text-transform: uppercase; }
+  .stat-value { font-family: 'Kalam', cursive; font-size: 1.4rem; color: #1D2B4F; }
+
+  .results-card { background: #fff; border-radius: 8px; padding: 24px; margin-top: 20px; border: 2px solid #F2C14E; text-align: center; }
+  .results-score { font-family: 'Kalam', cursive; font-size: 3rem; color: #1D2B4F; margin: 6px 0; }
+  .results-msg { font-size: 1rem; color: #5A5240; margin-bottom: 16px; }
+  .results-actions { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+
+  input[type="text"].short-answer { width: 100%; margin-bottom: 8px; }
 </style>
 </head>
 <body>
@@ -85,17 +100,21 @@
   </div>
 
   <div class="history-box" id="historyBox" style="display:none;">
-    <div class="header-row" style="margin-bottom:10px;">
-      <p class="font-hand" style="font-size:1.4rem; margin:0;">Past sessions</p>
+    <div class="header-row" style="margin-bottom:14px;">
+      <p class="font-hand" style="font-size:1.4rem; margin:0;">Your stats</p>
       <button class="btn-link" id="clearHistory">Clear</button>
     </div>
+
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <p class="font-hand" style="font-size:1.4rem; margin:16px 0 8px;">Past sessions</p>
     <div id="historyList"></div>
     <div id="weakSpots"></div>
   </div>
 
   <div style="margin-top: 20px;">
-    <input type="password" id="apiKey" placeholder="Paste your Gemini API key (kept only in this browser tab)" style="width:100%; margin-bottom:10px;" />
-    <p class="key-note">Get a free key at aistudio.google.com/apikey. It's stored only in this browser session (sessionStorage), never sent anywhere except Google's Gemini API, and clears when you close the tab.</p>
+    <input type="password" id="apiKey" placeholder="Paste your Anthropic API key (kept only in this browser tab)" style="width:100%; margin-bottom:10px;" />
+    <p class="key-note">Get a key at console.anthropic.com. It's stored only in this browser session (sessionStorage), never sent anywhere except Anthropic's API, and clears when you close the tab.</p>
 
     <textarea id="notes" rows="6" placeholder="Paste study notes or just a topic, e.g. 'cellular respiration' or 'the Krebs cycle'..."></textarea>
 
@@ -109,24 +128,65 @@
       <select id="count">
         <option value="3">3 questions</option><option value="5" selected>5 questions</option><option value="8">8 questions</option>
       </select>
+      <select id="qtype">
+        <option value="mixed">Mixed question types</option>
+        <option value="multiple_choice">Multiple choice only</option>
+        <option value="true_false">True/False only</option>
+        <option value="short_answer">Short answer only</option>
+      </select>
       <button id="generateBtn" style="margin-left:auto;">Generate quiz →</button>
     </div>
     <p class="error" id="errorMsg"></p>
   </div>
 
   <div id="questionsBox" style="margin-top: 20px;"></div>
+  <div id="resultsBox"></div>
 </div>
 
 <script>
 const HISTORY_KEY = "quiz-history";
 let questions = [];
 let answers = {};
+let currentSubject = "", currentDifficulty = "";
 let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]");
 
 const el = (id) => document.getElementById(id);
 
+function renderStats() {
+  const grid = el("statsGrid");
+  if (history.length === 0) {
+    grid.innerHTML = '<p style="font-style:italic; color:#5A5240; font-size:0.9rem; grid-column: 1 / -1;">No quizzes completed yet.</p>';
+    return;
+  }
+  const totalQuizzes = history.length;
+  const avgScore = Math.round(
+    history.reduce((sum, s) => sum + (s.correct / s.total), 0) / totalQuizzes * 100
+  );
+
+  const bySubject = {};
+  history.forEach(s => {
+    if (!bySubject[s.subject]) bySubject[s.subject] = { correct: 0, total: 0 };
+    bySubject[s.subject].correct += s.correct;
+    bySubject[s.subject].total += s.total;
+  });
+  let strongest = null, weakest = null;
+  Object.entries(bySubject).forEach(([subj, d]) => {
+    const pct = d.correct / d.total;
+    if (!strongest || pct > strongest.pct) strongest = { subj, pct };
+    if (!weakest || pct < weakest.pct) weakest = { subj, pct };
+  });
+
+  grid.innerHTML = `
+    <div class="stat-box"><div class="stat-label">Quizzes completed</div><div class="stat-value">${totalQuizzes}</div></div>
+    <div class="stat-box"><div class="stat-label">Average score</div><div class="stat-value">${avgScore}%</div></div>
+    <div class="stat-box"><div class="stat-label">Strongest subject</div><div class="stat-value" style="font-size:1.1rem;">${strongest ? strongest.subj : "—"}</div></div>
+    <div class="stat-box"><div class="stat-label">Weakest subject</div><div class="stat-value" style="font-size:1.1rem;">${weakest ? weakest.subj : "—"}</div></div>
+  `;
+}
+
 function renderHistory() {
   el("historyToggle").textContent = `History (${history.length})`;
+  renderStats();
   const list = el("historyList");
   const weak = el("weakSpots");
   if (history.length === 0) {
@@ -171,19 +231,26 @@ async function generateQuiz() {
   const subject = el("subject").value;
   const difficulty = el("difficulty").value;
   const count = el("count").value;
+  const qtype = el("qtype").value;
   const errorMsg = el("errorMsg");
   errorMsg.textContent = "";
 
   if (!notes) { errorMsg.textContent = "Paste some notes or a topic first."; return; }
-  if (!apiKey) { errorMsg.textContent = "Paste your Gemini API key above first."; return; }
+  if (!apiKey) { errorMsg.textContent = "Paste your Anthropic API key above first."; return; }
 
-  sessionStorage.setItem("gemini_key", apiKey);
+  sessionStorage.setItem("anthropic_key", apiKey);
+  currentSubject = subject; currentDifficulty = difficulty;
 
   const btn = el("generateBtn");
   btn.disabled = true;
   btn.textContent = "Writing questions...";
   questions = []; answers = {};
   el("questionsBox").innerHTML = "";
+  el("resultsBox").innerHTML = "";
+
+  const typeInstruction = qtype === "mixed"
+    ? `Use a mix of "multiple_choice", "true_false", and "short_answer" types across the questions.`
+    : `Use ONLY the "${qtype}" type for every question.`;
 
   const prompt = `You are creating a study quiz for a high-school/early-college tutee.
 Subject: ${subject}
@@ -193,44 +260,37 @@ Notes or topic:
 ${notes}
 """
 
-Write exactly ${count} multiple-choice questions based on this material.
+Write exactly ${count} questions based on this material. ${typeInstruction}
+For "multiple_choice": include an "options" array of 4 strings and "correctIndex".
+For "true_false": include "options": ["True","False"] and "correctIndex" (0 for True, 1 for False).
+For "short_answer": include "correctAnswer" as a short string (a few words), no "options" or "correctIndex".
+All types must include "explanation".
+
 Return ONLY valid JSON, no markdown fences, no preamble, matching this shape:
-{"questions":[{"question":"...","options":["A text","B text","C text","D text"],"correctIndex":0,"explanation":"1-2 sentence explanation of why the answer is correct"}]}`;
+{"questions":[{"type":"multiple_choice","question":"...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."}]}`;
 
   try {
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=${encodeURIComponent(apiKey)}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            maxOutputTokens: 4000,
-            responseMimeType: "application/json",
-            thinkingConfig: { thinkingBudget: 0 }
-          }
-        })
-      }
-    );
+    const response = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-6",
+        max_tokens: 1800,
+        messages: [{ role: "user", content: prompt }]
+      })
+    });
     const data = await response.json();
     if (data.error) throw new Error(data.error.message || "API error");
-
-    const candidate = data.candidates && data.candidates[0];
-    if (!candidate) throw new Error("No response from Gemini. Try shorter notes.");
-
-    const text = (candidate.content.parts || [])
-      .map(p => p.text || "")
-      .join("")
-      .trim();
+    const text = data.content.map(b => b.type === "text" ? b.text : "").join("").trim();
     const clean = text.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(clean);
     questions = parsed.questions || [];
-    if (questions.length === 0) throw new Error("No questions were returned.");
-    renderQuestions(subject, difficulty);
+    renderQuestions();
   } catch (e) {
     errorMsg.textContent = "Couldn't generate a quiz. Check your API key, or try shorter notes. (" + e.message + ")";
   } finally {
@@ -239,59 +299,149 @@ Return ONLY valid JSON, no markdown fences, no preamble, matching this shape:
   }
 }
 
-function renderQuestions(subject, difficulty) {
+function renderQuestions() {
   const box = el("questionsBox");
   box.innerHTML = "";
   questions.forEach((q, i) => {
+    const type = q.type || "multiple_choice";
     const card = document.createElement("div");
     card.className = "card";
     card.innerHTML = `
       <p class="qlabel">Q${i + 1}</p>
+      <p class="qtype">${type.replace("_", " ")}</p>
       <p class="qtext">${q.question}</p>
-      <div class="opts" id="opts-${i}"></div>
+      <div id="body-${i}"></div>
       <p class="explanation" id="exp-${i}" style="display:none;"></p>
     `;
     box.appendChild(card);
-    const optsDiv = card.querySelector(`#opts-${i}`);
-    q.options.forEach((opt, oi) => {
-      const b = document.createElement("button");
-      b.className = "opt";
-      b.textContent = String.fromCharCode(65 + oi) + ". " + opt;
-      b.onclick = () => selectAnswer(i, oi, subject, difficulty);
-      optsDiv.appendChild(b);
-    });
+    const bodyDiv = card.querySelector(`#body-${i}`);
+
+    if (type === "short_answer") {
+      bodyDiv.innerHTML = `
+        <input type="text" class="short-answer" id="sa-${i}" placeholder="Type your answer..." />
+        <button id="check-${i}" class="btn-secondary">Check answer</button>
+      `;
+      bodyDiv.querySelector(`#check-${i}`).onclick = () => checkShortAnswer(i);
+    } else {
+      q.options.forEach((opt, oi) => {
+        const b = document.createElement("button");
+        b.className = "opt";
+        b.textContent = (type === "true_false" ? "" : String.fromCharCode(65 + oi) + ". ") + opt;
+        b.onclick = () => selectAnswer(i, oi);
+        bodyDiv.appendChild(b);
+      });
+    }
   });
 }
 
-function selectAnswer(qIndex, optIndex, subject, difficulty) {
+function checkShortAnswer(i) {
+  if (answers[i] !== undefined) return;
+  const input = el(`sa-${i}`);
+  const userAnswer = input.value.trim();
+  answers[i] = userAnswer;
+  input.disabled = true;
+  el(`exp-${i}`).textContent = `Model answer: "${questions[i].correctAnswer}". ${questions[i].explanation}`;
+  el(`exp-${i}`).style.display = "block";
+  checkAllAnswered();
+}
+
+function selectAnswer(qIndex, optIndex) {
   if (answers[qIndex] !== undefined) return;
   answers[qIndex] = optIndex;
   const q = questions[qIndex];
-  const optsDiv = el(`opts-${qIndex}`);
-  [...optsDiv.children].forEach((btn, oi) => {
+  const bodyDiv = el(`body-${qIndex}`);
+  [...bodyDiv.children].forEach((btn, oi) => {
     if (oi === q.correctIndex) btn.classList.add("correct");
     else if (oi === optIndex) btn.classList.add("wrong");
   });
   el(`exp-${qIndex}`).textContent = q.explanation;
   el(`exp-${qIndex}`).style.display = "block";
+  checkAllAnswered();
+}
 
-  if (Object.keys(answers).length === questions.length) {
-    const missed = questions
-      .map((q, i) => ({ q, chosen: answers[i] }))
-      .filter(x => x.chosen !== x.q.correctIndex)
-      .map(x => x.q.question);
-    saveSession({
-      date: new Date().toISOString(),
-      subject, difficulty,
-      total: questions.length,
-      correct: questions.length - missed.length,
-      missed
-    });
+function isCorrect(i) {
+  const q = questions[i];
+  const type = q.type || "multiple_choice";
+  if (type === "short_answer") {
+    return answers[i] && answers[i].length > 0 ? null : false;
   }
+  return answers[i] === q.correctIndex;
+}
+
+function checkAllAnswered() {
+  if (Object.keys(answers).length !== questions.length) return;
+
+  const missed = [];
+  let correctCount = 0;
+  let gradable = 0;
+  questions.forEach((q, i) => {
+    const result = isCorrect(i);
+    if (result === null) return;
+    gradable++;
+    if (result) correctCount++;
+    else missed.push(q.question);
+  });
+
+  const session = {
+    date: new Date().toISOString(),
+    subject: currentSubject,
+    difficulty: currentDifficulty,
+    total: gradable,
+    correct: correctCount,
+    missed
+  };
+  if (gradable > 0) saveSession(session);
+  renderResults(correctCount, gradable);
+}
+
+function renderResults(correct, total) {
+  const pct = total > 0 ? Math.round((correct / total) * 100) : null;
+  let msg = "";
+  if (pct === null) msg = "Short-answer questions aren't auto-scored — compare your answers to the model answers above.";
+  else if (pct >= 80) msg = "Excellent! You've got a strong handle on this.";
+  else if (pct >= 50) msg = "Good effort — review what you missed and try again.";
+  else msg = "Keep practicing — check the explanations above closely.";
+
+  el("resultsBox").innerHTML = `
+    <div class="results-card">
+      <p class="font-hand" style="font-size:1.5rem; margin:0;">Quiz complete</p>
+      ${pct !== null ? `<p class="results-score">${correct}/${total} (${pct}%)</p>` : ""}
+      <p class="results-msg">${msg}</p>
+      <div class="results-actions">
+        <button class="btn-secondary" id="exportBtn">Export results (.txt)</button>
+      </div>
+    </div>
+  `;
+  el("exportBtn").onclick = exportResults;
+}
+
+function exportResults() {
+  let out = `Quiz Me On This — Results\n`;
+  out += `Subject: ${currentSubject} | Difficulty: ${currentDifficulty}\n`;
+  out += `Date: ${new Date().toLocaleString()}\n\n`;
+  questions.forEach((q, i) => {
+    out += `Q${i + 1}. ${q.question}\n`;
+    const type = q.type || "multiple_choice";
+    if (type === "short_answer") {
+      out += `Your answer: ${answers[i] || "(none)"}\n`;
+      out += `Model answer: ${q.correctAnswer}\n`;
+    } else {
+      out += `Your answer: ${q.options[answers[i]]}\n`;
+      out += `Correct answer: ${q.options[q.correctIndex]}\n`;
+    }
+    out += `Explanation: ${q.explanation}\n\n`;
+  });
+  const blob = new Blob([out], { type: "text/plain" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `quiz-results-${currentSubject}-${Date.now()}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 el("generateBtn").onclick = generateQuiz;
-const savedKey = sessionStorage.getItem("gemini_key");
+const savedKey = sessionStorage.getItem("anthropic_key");
 if (savedKey) el("apiKey").value = savedKey;
 renderHistory();
 </script>
