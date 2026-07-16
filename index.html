@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
-<!-- VERSION 2.0 — added: score/results page, quiz stats tracking, export to text file, true/false + short-answer question types -->
+<!-- VERSION 3.0 — added: per-subject weak-spot tracking with miss-rate breakdown, replacing the flat missed-questions list -->
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -198,12 +198,35 @@ function renderHistory() {
     `<div class="history-row"><span>${s.subject} · ${s.difficulty}</span><span class="font-mono">${s.correct}/${s.total} · ${new Date(s.date).toLocaleDateString()}</span></div>`
   ).join("");
 
-  const seen = new Set();
-  const weakSpots = [];
-  history.forEach(s => (s.missed || []).forEach(m => { if (!seen.has(m)) { seen.add(m); weakSpots.push(m); } }));
-  if (weakSpots.length > 0) {
-    weak.innerHTML = '<p class="font-hand" style="font-size:1.2rem; margin:10px 0 6px;">Questions you\'ve missed</p><ul style="font-size:0.9rem; color:#5A5240; padding-left:20px;">' +
-      weakSpots.slice(0, 8).map(m => `<li>${m}</li>`).join("") + '</ul>';
+  // group missed questions and totals by subject
+  const bySubjectData = {};
+  history.forEach(s => {
+    if (!bySubjectData[s.subject]) bySubjectData[s.subject] = { total: 0, missCount: 0, missedQuestions: [], seen: new Set() };
+    const d = bySubjectData[s.subject];
+    d.total += s.total;
+    d.missCount += (s.missed || []).length;
+    (s.missed || []).forEach(m => { if (!d.seen.has(m)) { d.seen.add(m); d.missedQuestions.push(m); } });
+  });
+
+  const subjectsSorted = Object.entries(bySubjectData)
+    .filter(([, d]) => d.total > 0)
+    .map(([subj, d]) => ({ subj, missRate: Math.round((d.missCount / d.total) * 100), missedQuestions: d.missedQuestions }))
+    .sort((a, b) => b.missRate - a.missRate);
+
+  if (subjectsSorted.length > 0) {
+    weak.innerHTML = '<p class="font-hand" style="font-size:1.2rem; margin:10px 0 8px;">Weak spots by subject</p>' +
+      subjectsSorted.map(s => `
+        <div style="margin-bottom:14px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
+            <span class="font-mono" style="font-size:0.85rem; color:#1D2B4F;">${s.subj}</span>
+            <span class="font-mono" style="font-size:0.75rem; color:${s.missRate >= 50 ? '#C1666B' : '#5A5240'};">${s.missRate}% missed</span>
+          </div>
+          <div style="background:#F0EBDA; border-radius:4px; height:6px; overflow:hidden;">
+            <div style="background:${s.missRate >= 50 ? '#C1666B' : '#F2C14E'}; height:100%; width:${s.missRate}%;"></div>
+          </div>
+          ${s.missedQuestions.length > 0 ? `<ul style="font-size:0.85rem; color:#5A5240; padding-left:20px; margin:6px 0 0;">${s.missedQuestions.slice(0, 3).map(m => `<li>${m}</li>`).join("")}</ul>` : ""}
+        </div>
+      `).join("");
   } else {
     weak.innerHTML = "";
   }
